@@ -9,17 +9,20 @@ plugins:
   - serverless-offline
   - serverless-dotenv-plugin # Load .env as environment variables
 
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  tableName: ${self:custom.stage}-notes
+
 provider:
   name: aws
   runtime: nodejs12.x
-  stage: prod
+  stage: dev  # default stage
   region: us-east-1
 
   environment:
-    tableName: notes
-    # Loading environment variables externally via .env file (see env.example)
-    SAMPLE_ENV_VAR: ${env:SAMPLE_ENV_VAR} # From .env file
-    stripeSecretKey: ${env:STRIPE_SECRET_KEY} # From .env file
+    tableName: ${self:custom.tableName}
+    SAMPLE_ENV_VAR: ${env:SAMPLE_ENV_VAR}
+    stripeSecretKey: ${env:STRIPE_SECRET_KEY}
 
   iamRoleStatements:
     - Effect: Allow
@@ -31,10 +34,15 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:us-east-1:*:*"
+      Resource:
+        - "Fn::GetAtt": [ NotesTable, Arn ]
 
 resources:
   - ${file(resources/api-gateway-errors.yml)}
+  - ${file(resources/dynamodb-table.yml)}
+  - ${file(resources/s3-bucket.yml)}
+  - ${file(resources/cognito-user-pool.yml)}
+  - ${file(resources/cognito-identity-pool.yml)}
 
 functions:
   hello:
